@@ -19,16 +19,13 @@ def interpolacion(xi, yi, x):
         Valores y conocidos en los puntos xi.
     x : array_like
         Puntos x donde se desea evaluar la interpolación.
-    metodo : str
-        Método de interpolación a utilizar ('lagrange', 'newton', 'spline').
 
     Retorna:
-    y : array_like
-        Valores interpolados en los puntos x.
+    tuple : (yLagrange, yNewton, yTrazadorCubico)
+        Valores interpolados en los puntos x para cada método.
     """
 
     #Interpolación de Lagrange
-
     yLagrange = lagrange.lagrange_interpolation(xi, yi, x)
     print("Interpolación de Lagrange realizada.")
     print("valor de y en x:", yLagrange)
@@ -38,7 +35,6 @@ def interpolacion(xi, yi, x):
     
     print("Interpolación de Newton realizada.")
     print("valor de y en x:", yNewton)
-
 
     #Trazadores cúbicos
     coef = trazadores_cubicos_naturales(xi, yi)
@@ -57,6 +53,18 @@ def interpolacion(xi, yi, x):
 #Comparar precisión de los métodos usando validación cruzada Leave-One-Out
 #Retorno: El mejor método de interpolación  para el conjunto de datos
 def evaluar_precision(xi, yi):
+    """
+    Evalúa la precisión de los métodos de interpolación usando validación cruzada.
+    
+    Parámetros:
+    xi : array_like
+        Puntos x conocidos.
+    yi : array_like
+        Valores y conocidos en los puntos xi.
+        
+    Retorna:
+    str : Nombre del método más preciso ('lagrange', 'newton', 'spline')
+    """
     n = len(xi)
     errores = {'lagrange': [], 'newton': [], 'spline': []}
 
@@ -89,6 +97,7 @@ def evaluar_precision(xi, yi):
     print(f"\nEl método más preciso es: {mejor.upper()}")
     #Retornar el método más preciso
     return mejor
+
 #-----------------------------------------------------------------------------------------------
 # Uso
 # nodos (xi) — ya ordenados ascendentemente
@@ -101,8 +110,7 @@ y = [19.935694, 20.085081, 20.787186, 22.241118, 23.245721, 24.262249,
      25.051342, 24.770800, 24.207606, 22.976107, 20.940634, 19.318913,
      18.337140, 17.215214, 16.483467, 16.346980]
 
-
-
-interpolacion(x, y, 12)
-# Comparar resultados y retornar el más preciso
-evaluar_precision(x, y)
+# Ejemplo de uso
+if __name__ == "__main__":
+    resultado_interpolacion = interpolacion(x, y, 12)
+    mejor_metodo = evaluar_precision(x, y)
