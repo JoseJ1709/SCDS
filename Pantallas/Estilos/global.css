@@ -1,0 +1,104 @@
+
+/* Contenedor principal - Quitar padding excesivo */
+.main .block-container,
+.st-emotion-cache-zy6yx3,
+[data-testid="stAppViewContainer"] > .main,
+.appview-container .main {
+    padding: 0rem 1rem 2rem 1rem !important;  /* 👈 top right bottom left */
+    max-width: 1600px !important;
+}
+
+/* Ocultar elementos de Streamlit */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+/* ============================================
+   CONTENEDOR PRINCIPAL
+============================================ */
+
+.stApp {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.main .block-container {
+    max-width: 1600px;
+    padding: 0 2rem 2rem 2rem; !important;
+    max-width: 1600px;
+}
+
+/* ============================================
+   TÍTULOS
+============================================ */
+
+h1 {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-weight: 800;
+    color: #2c3e50;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+p strong {
+    color: #3498db;
+}
+
+
+/* Seleccionar específicamente la primera columna del bloque horizontal */
+[data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child {
+    background: white !important;
+    border-radius: 15px !important;
+    padding: 1.5rem !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    border: 2px solid #ecf0f1 !important;
+    animation: fadeInLeft 0.6s ease-out;
+}
+
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ============================================
+   SEGUNDA COLUMNA (BOTONES ROJOS)
+============================================ */
+
+[data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child {
+    animation: fadeInRight 0.6s ease-out;
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ============================================
+   SUB-COLUMNAS DENTRO DE LA CAJA BLANCA
+============================================ */
+
+/* Reducir padding de las sub-columnas */
+[data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"] [data-testid="column"] {
+    padding: 0 0.25rem !important;
+}
+
+/* ============================================
+   AJUSTES PARA BOTONES
+============================================ */
+
+/* Todos los botones con ancho completo */
+.stButton > button {
+    width: 100%;
+}
