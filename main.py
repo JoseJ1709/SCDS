@@ -7,7 +7,6 @@ from pathlib import Path
 import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
-from Pantallas.Componentes.Boton import boton
 
 # Importar funciones de interpolación
 import Algoritmos.interpolacion.python.lagrange as lagrange
@@ -214,7 +213,7 @@ def reconstruccion(datos):
     t = df['Temperatura (°C)'].values.tolist()
 
     # Generar puntos para reconstrucción
-    h_new = np.linspace(min(h), max(h), 200).tolist()
+    h_new = np.linspace(min(h), max(h), 10000).tolist()
     
     try:
         # Aplicar todos los métodos de interpolación
@@ -252,7 +251,7 @@ def reconstruccion(datos):
     except Exception as e:
         st.error(f"❌ Error en la reconstrucción por interpolación: {str(e)}")
         # Fallback a interpolación lineal simple de numpy
-        h_new = np.linspace(min(h), max(h), 200)
+        h_new = np.linspace(min(h), max(h), 10000)
         t_reconstruido = np.interp(h_new, h, t)
         
         st.session_state.accion_actual = 'reconstruccion'
@@ -686,7 +685,7 @@ def renderizar_tabla_datos():
     df_editado = st.data_editor(
         st.session_state.datos_originales,
         use_container_width=True,
-        num_rows="dynamic",  # Permite agregar/eliminar filas
+        num_rows="dynamic",
         column_config={
             "Tiempo (min)": st.column_config.NumberColumn(
                 "⏱️ Tiempo (min)",
@@ -743,7 +742,7 @@ def main():
 
         with subcol2:
             if st.button("🔄 Reconstrucción", key="btn_reconstruccion", type="primary", use_container_width=True):
-                reconstruccion({"puntos": 200})
+                reconstruccion({"puntos": 10000})
                 # Limpiar resultado anterior al generar nueva reconstrucción
                 st.session_state.resultado_reconstruccion = None
 
@@ -764,8 +763,41 @@ def main():
                 exportar_datos({"formato": "csv"})
 
         with subcol6:
-            if st.button("🚀 Importar", key="btn_importar", type="secondary", use_container_width=True):
-                importar_datos({"tipo": "csv"})
+            # IMPORTAR - FILE UPLOADER SIN BUCLE
+            st.markdown('<div class="uploader-container">', unsafe_allow_html=True)
+
+            uploaded = st.file_uploader(
+                "🚀 Importar CSV",
+                type=['csv'],
+                key="uploader_csv",
+                help="Sube un archivo CSV con columnas: 'Tiempo (min)' y 'Temperatura (°C)'"
+            )
+
+            # Inicializar flag
+            if 'archivo_procesado' not in st.session_state:
+                st.session_state.archivo_procesado = None
+
+            # Procesar solo si es archivo NUEVO
+            if uploaded is not None and uploaded.name != st.session_state.archivo_procesado:
+                try:
+                    df = pd.read_csv(uploaded)
+
+                    if 'Tiempo (min)' in df.columns and 'Temperatura (°C)' in df.columns:
+                        st.session_state.datos_originales = df
+                        st.session_state.archivo_procesado = uploaded.name
+
+                        st.success(f"✅ Cargado: {len(df)} registros de **{uploaded.name}**")
+
+                        with st.expander("👀 Vista previa"):
+                            st.dataframe(df.head(10), width="stretch")
+                    else:
+                        st.error("❌ Columnas incorrectas")
+                        st.code("Tiempo (min),Temperatura (°C)\n0,22.1\n5,23.5", language="csv")
+
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+
+            st.markdown('</div>', unsafe_allow_html=True)
 
         with subcol7:
             if st.button("📄 Reporte", key="btn_reporte", type="secondary", use_container_width=True):
