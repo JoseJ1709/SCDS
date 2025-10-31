@@ -1182,6 +1182,13 @@ def main():
         <h1 style="text-align: center; margin-bottom: 0.5rem;">
             🌴 Sistema de Análisis Térmico
         </h1>
+        <p style="text-align: center; margin-top: 0;">
+            <a href="https://github.com/JoseJ1709/SCDS" 
+               target="_blank" 
+               style="color: #3498db; text-decoration: none; font-size: 0.9rem;">
+                🔗 Documentación del Proyecto
+            </a>
+        </p>
     """, unsafe_allow_html=True)
 
     # ========== FILA DE BOTONES ==========
@@ -1192,7 +1199,7 @@ def main():
         subcol1, subcol2, subcol3, subcol4 = st.columns(4)
 
         with subcol1:
-            if st.button("📊 Comparación", key="btn_comparacion", type="primary", use_container_width=True):
+            if st.button("📊 Interpolación", key="btn_comparacion", type="primary", use_container_width=True):
                 comparacion({"metodo": "interpolacion"})
 
         with subcol2:
