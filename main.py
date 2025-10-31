@@ -40,7 +40,7 @@ st.set_page_config(
 load_global_styles()
 
 # ============================================
-# INICIALIZAR SESSION STATE
+# INICIALIZAR SESSION STATE // Usado de variables globales y persistencia(que se actualicen los datos y las tablas)
 # ============================================
 
 if 'accion_actual' not in st.session_state:
@@ -169,7 +169,7 @@ def comparacion(datos):
             t_mejor = t_lagrange
         elif mejor_metodo == 'newton':
             t_mejor = t_newton
-        else:  # 'Trazadores cúbicos'
+        else:
             t_mejor = t_trazadores
 
         st.session_state.accion_actual = 'comparacion'
@@ -234,7 +234,7 @@ def reconstruccion(datos):
             t_reconstruido = t_lagrange
         elif mejor_metodo == 'newton':
             t_reconstruido = t_newton
-        else:  # 'Trazadores cúbicos'
+        else:
             t_reconstruido = t_trazadores
 
         st.session_state.accion_actual = 'reconstruccion'
@@ -294,7 +294,7 @@ def generar_reconstruccion_punto():
                 resultado = t_lagrange[0]
             elif mejor_metodo == 'newton':
                 resultado = t_newton[0]
-            else:  # 'Trazadores cúbicos'
+            else:
                 resultado = t_trazadores[0]
             
             st.session_state.resultado_reconstruccion = {
@@ -487,7 +487,6 @@ def prediccion(datos):
         h_futuro = np.linspace(ultimo_tiempo, ultimo_tiempo + horizonte, num_puntos_futuros).tolist()
 
         # Aplicar interpolación/extrapolación con los últimos puntos
-        # Usar Trazadores cúbicos para extrapolación suave
         coef = trazadores_cubicos_naturales(h_base, t_base)
         t_futuro = evaluar_trazadores_cubicos(h_base, coef, h_futuro)
 
@@ -577,10 +576,10 @@ def importar_datos(datos):
 
 def generar_reporte(datos):
     """Genera reporte PDF"""
+    """NO SE IMPLEMENTO"""
     st.success(f"✅ Generando reporte en formato {datos.get('formato', 'PDF')}")
     st.balloons()
 
-    # Aquí irían las funciones para generar PDF
     df = st.session_state.datos_originales
     st.info(f"📄 Reporte generado con {len(df)} registros")
 
@@ -940,7 +939,7 @@ def mostrar_panel_prediccion():
     with col1:
         # Input para el punto a predecir
         tiempo_max_hist = st.session_state.datos_originales['Tiempo (min)'].max()
-        tiempo_max_pred = tiempo_max_hist + 60  # Permitir predecir hasta 60 min en el futuro
+        tiempo_max_pred = tiempo_max_hist + 60
 
         punto = st.number_input(
             f"Ingrese el tiempo futuro (min) para predecir (> {tiempo_max_hist:.1f} min):",
@@ -1221,7 +1220,6 @@ def main():
                 exportar_datos({"formato": "csv"})
 
         with subcol6:
-            # IMPORTAR - FILE UPLOADER SIN BUCLE
             st.markdown('<div class="uploader-container">', unsafe_allow_html=True)
 
             uploaded = st.file_uploader(
@@ -1231,18 +1229,15 @@ def main():
                 help="Sube un archivo CSV con columnas: 'Tiempo (min)' y 'Temperatura (°C)'"
             )
 
-            # Inicializar flags
             if 'archivo_procesado' not in st.session_state:
                 st.session_state.archivo_procesado = None
 
-            # ========== CAMBIO AQUÍ: Usar file_id único ==========
             if 'ultimo_file_id' not in st.session_state:
                 st.session_state.ultimo_file_id = None
 
             # Generar ID único del archivo basado en nombre + tamaño + contenido (primeros bytes)
             file_id_actual = None
             if uploaded is not None:
-                # Crear ID único: nombre + tamaño + hash de primeros 100 bytes
                 file_bytes = uploaded.getvalue()
                 file_id_actual = f"{uploaded.name}_{uploaded.size}_{hash(file_bytes[:100])}"
 
