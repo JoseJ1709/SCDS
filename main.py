@@ -11,7 +11,7 @@ import pandas as pd
 # Importar funciones de interpolación
 import Algoritmos.interpolacion.python.lagrange as lagrange
 from Algoritmos.interpolacion.python.diferenciasdiv import newton_interpolation
-from Algoritmos.interpolacion.python.trazadorescub import trazadores_cubicos_naturales, evaluar_spline
+from Algoritmos.interpolacion.python.trazadorescub import trazadores_cubicos_naturales, evaluar_trazadores_cubicos
 
 def load_global_styles():
     """Carga los estilos globales desde global.css"""
@@ -92,7 +92,7 @@ def interpolacion(xi, yi, x):
     
     # Trazadores cúbicos
     coef = trazadores_cubicos_naturales(xi, yi)
-    yTrazadorCubico = evaluar_spline(xi, coef, x)
+    yTrazadorCubico = evaluar_trazadores_cubicos(xi, coef, x)
 
     return yLagrange, yNewton, yTrazadorCubico
 
@@ -108,7 +108,7 @@ def evaluar_precision(xi, yi):
     str - Nombre del método más preciso
     """
     n = len(xi)
-    errores = {'lagrange': [], 'newton': [], 'spline': []}
+    errores = {'lagrange': [], 'newton': [], 'Trazadores cúbicos': []}
 
     for i in range(n):
         # Separar punto de prueba
@@ -125,10 +125,10 @@ def evaluar_precision(xi, yi):
         y_pred_n = newton_interpolation(xTrain, yTrain, xTest)
         errores['newton'].append(abs(yReal - y_pred_n))
 
-        # Spline
+        # Trazadores cúbicos
         coef = trazadores_cubicos_naturales(xTrain, yTrain)
-        y_pred_s = evaluar_spline(xTrain, coef, xTest)
-        errores['spline'].append(abs(yReal - y_pred_s))
+        y_pred_s = evaluar_trazadores_cubicos(xTrain, coef, xTest)
+        errores['Trazadores cúbicos'].append(abs(yReal - y_pred_s))
 
     # Calcular error promedio (MAE)
     for metodo, e in errores.items():
@@ -169,7 +169,7 @@ def comparacion(datos):
             t_mejor = t_lagrange
         elif mejor_metodo == 'newton':
             t_mejor = t_newton
-        else:  # 'spline'
+        else:  # 'Trazadores cúbicos'
             t_mejor = t_trazadores
 
         st.session_state.accion_actual = 'comparacion'
@@ -234,7 +234,7 @@ def reconstruccion(datos):
             t_reconstruido = t_lagrange
         elif mejor_metodo == 'newton':
             t_reconstruido = t_newton
-        else:  # 'spline'
+        else:  # 'Trazadores cúbicos'
             t_reconstruido = t_trazadores
 
         st.session_state.accion_actual = 'reconstruccion'
@@ -287,14 +287,14 @@ def generar_reconstruccion_punto():
             t_lagrange, t_newton, t_trazadores = interpolacion(h, t, [punto])
             
             # Obtener el mejor método
-            mejor_metodo = st.session_state.datos_procesados.get('mejor_metodo', 'spline')
+            mejor_metodo = st.session_state.datos_procesados.get('mejor_metodo', 'Trazadores cúbicos')
             
             # Seleccionar el resultado del mejor método
             if mejor_metodo == 'lagrange':
                 resultado = t_lagrange[0]
             elif mejor_metodo == 'newton':
                 resultado = t_newton[0]
-            else:  # 'spline'
+            else:  # 'Trazadores cúbicos'
                 resultado = t_trazadores[0]
             
             st.session_state.resultado_reconstruccion = {
@@ -304,7 +304,7 @@ def generar_reconstruccion_punto():
                 'todos_metodos': {
                     'lagrange': t_lagrange[0],
                     'newton': t_newton[0],
-                    'spline': t_trazadores[0]
+                    'Trazadores cúbicos': t_trazadores[0]
                 }
             }
             
@@ -339,18 +339,18 @@ def generar_prediccion_punto():
             t_newton = newton_interpolation(h_base, t_base, [punto])
 
             coef = trazadores_cubicos_naturales(h_base, t_base)
-            t_spline = evaluar_spline(h_base, coef, [punto])
+            t_trazadores_cubicos = evaluar_trazadores_cubicos(h_base, coef, [punto])
 
             # Obtener el mejor método del análisis actual
-            mejor_metodo = st.session_state.datos_procesados.get('mejor_metodo', 'spline')
+            mejor_metodo = st.session_state.datos_procesados.get('mejor_metodo', 'Trazadores cúbicos')
 
             # Seleccionar el resultado del mejor método
             if mejor_metodo == 'lagrange':
                 resultado = t_lagrange[0]
             elif mejor_metodo == 'newton':
                 resultado = t_newton[0]
-            else:  # 'spline'
-                resultado = t_spline[0]
+            else:  # 'Trazadores cúbicos'
+                resultado = t_trazadores_cubicos[0]
 
             st.session_state.resultado_prediccion = {
                 'punto': punto,
@@ -359,7 +359,7 @@ def generar_prediccion_punto():
                 'todos_metodos': {
                     'lagrange': t_lagrange[0],
                     'newton': t_newton[0],
-                    'spline': t_spline[0]
+                    'Trazadores cúbicos': t_trazadores_cubicos[0]
                 }
             }
 
@@ -368,28 +368,101 @@ def generar_prediccion_punto():
         except Exception as e:
             st.error(f"❌ Error en la predicción del punto: {str(e)}")
 
+
+def detectar_intervalos_criticos(tiempo, temperatura, umbral_max, umbral_min):
+    """
+    Detecta los intervalos donde la temperatura está fuera del rango seguro
+
+    Returns:
+        dict con 'sobre_max' y 'bajo_min', cada uno con lista de intervalos
+    """
+    intervalos = {
+        'sobre_max': [],
+        'bajo_min': []
+    }
+
+    # Detectar intervalos por encima del máximo
+    en_intervalo = False
+    inicio = None
+
+    for i in range(len(temperatura)):
+        if temperatura[i] > umbral_max:
+            if not en_intervalo:
+                inicio = tiempo[i]
+                en_intervalo = True
+        else:
+            if en_intervalo:
+                intervalos['sobre_max'].append({
+                    'inicio': inicio,
+                    'fin': tiempo[i - 1],
+                    'temp_max': np.max(temperatura[np.where((tiempo >= inicio) & (tiempo <= tiempo[i - 1]))])
+                })
+                en_intervalo = False
+
+    # Si el último punto está fuera
+    if en_intervalo:
+        intervalos['sobre_max'].append({
+            'inicio': inicio,
+            'fin': tiempo[-1],
+            'temp_max': np.max(temperatura[np.where(tiempo >= inicio)])
+        })
+
+    # Detectar intervalos por debajo del mínimo
+    en_intervalo = False
+    inicio = None
+
+    for i in range(len(temperatura)):
+        if temperatura[i] < umbral_min:
+            if not en_intervalo:
+                inicio = tiempo[i]
+                en_intervalo = True
+        else:
+            if en_intervalo:
+                intervalos['bajo_min'].append({
+                    'inicio': inicio,
+                    'fin': tiempo[i - 1],
+                    'temp_min': np.min(temperatura[np.where((tiempo >= inicio) & (tiempo <= tiempo[i - 1]))])
+                })
+                en_intervalo = False
+
+    # Si el último punto está fuera
+    if en_intervalo:
+        intervalos['bajo_min'].append({
+            'inicio': inicio,
+            'fin': tiempo[-1],
+            'temp_min': np.min(temperatura[np.where(tiempo >= inicio)])
+        })
+
+    return intervalos
+
 def analizar(datos):
-    """Analiza temperatura y estrés térmico"""
-    st.success(f"✅ Analizando temperatura: {datos}")
+    """Analiza temperatura y estrés térmico con doble umbral"""
+    st.success(f"✅ Analizando temperatura con umbrales de estrés")
 
     # Usar datos de la tabla
     df = st.session_state.datos_originales
     h = df['Tiempo (min)'].values
     t = df['Temperatura (°C)'].values
-    umbral = datos.get('umbral', 29.0)
+
+    # Umbrales
+    umbral_max = datos.get('umbral_max', 29.0)
+    umbral_min = datos.get('umbral_min', 21.0)
+
+    # Detectar intervalos fuera de rango
+    intervalos_criticos = detectar_intervalos_criticos(h, t, umbral_max, umbral_min)
 
     st.session_state.accion_actual = 'analisis'
     st.session_state.datos_procesados = {
         'tiempo': h,
         'temp': t,
-        'umbral': umbral,
+        'umbral_max': umbral_max,
+        'umbral_min': umbral_min,
+        'intervalos_criticos': intervalos_criticos,
         'titulo': '🌡️ Análisis de Estrés Térmico',
         'tipo': 'analisis'
     }
 
     return {"status": "success", "accion": "analisis"}
-
-
 def prediccion(datos):
     """Predice temperatura futura usando extrapolación por interpolación"""
     st.success(f"✅ Generando predicción con extrapolación")
@@ -414,9 +487,9 @@ def prediccion(datos):
         h_futuro = np.linspace(ultimo_tiempo, ultimo_tiempo + horizonte, num_puntos_futuros).tolist()
 
         # Aplicar interpolación/extrapolación con los últimos puntos
-        # Usar spline cúbico para extrapolación suave
+        # Usar Trazadores cúbicos para extrapolación suave
         coef = trazadores_cubicos_naturales(h_base, t_base)
-        t_futuro = evaluar_spline(h_base, coef, h_futuro)
+        t_futuro = evaluar_trazadores_cubicos(h_base, coef, h_futuro)
 
         # Evaluar precisión del método
         mejor_metodo = evaluar_precision(h_historico, t_historico)
@@ -604,20 +677,33 @@ def renderizar_visualizacion():
             ))
 
     elif tipo == 'analisis':
+        # Curva de temperatura
         fig.add_trace(go.Scatter(
             x=datos['tiempo'],
             y=datos['temp'],
             mode='lines+markers',
             name='Temperatura',
-            line=dict(color='#3498db', width=2)
+            line=dict(color='#3498db', width=2),
+            marker=dict(size=6)
         ))
+
+        # Umbral máximo (línea roja)
         fig.add_hline(
-            y=datos['umbral'],
+            y=datos['umbral_max'],
             line_dash="dash",
             line_color="#e74c3c",
-            annotation_text=f"Umbral: {datos['umbral']}°C"
+            annotation_text=f"Umbral Máx: {datos['umbral_max']}°C",
+            annotation_position="right"
         )
 
+        # Umbral mínimo (línea azul)
+        fig.add_hline(
+            y=datos['umbral_min'],
+            line_dash="dash",
+            line_color="#3498db",
+            annotation_text=f"Umbral Mín: {datos['umbral_min']}°C",
+            annotation_position="right"
+        )
 
     elif tipo == 'prediccion':
 
@@ -649,7 +735,7 @@ def renderizar_visualizacion():
 
             mode='lines',
 
-            name=f'Predicción ({datos.get("mejor_metodo", "spline").upper()})',
+            name=f'Predicción ({datos.get("mejor_metodo", "Trazadores cúbicos").upper()})',
 
             line=dict(color='#9b59b6', width=2, dash='dash'),
 
@@ -718,13 +804,12 @@ def renderizar_visualizacion():
     if tipo == 'reconstruccion':
         mostrar_panel_reconstruccion()
 
-    # Mostrar información adicional para reconstrucción
-    if tipo == 'reconstruccion':
-        mostrar_panel_reconstruccion()
-
     # Mostrar información adicional para predicción
     if tipo == 'prediccion':
         mostrar_panel_prediccion()
+
+    if tipo == 'analisis':
+        mostrar_alertas_analisis(datos)
 
     col1, col2, col3 = st.columns(3)
 
@@ -806,7 +891,7 @@ def mostrar_panel_reconstruccion():
             with col2:
                 st.metric("Newton", f"{resultado['todos_metodos']['newton']:.4f}°C")
             with col3:
-                st.metric("Spline", f"{resultado['todos_metodos']['spline']:.4f}°C")
+                st.metric("Trazadores cúbicos", f"{resultado['todos_metodos']['Trazadores cúbicos']:.4f}°C")
 
 
 def mostrar_panel_prediccion():
@@ -871,7 +956,106 @@ def mostrar_panel_prediccion():
             with col2:
                 st.metric("Newton", f"{resultado['todos_metodos']['newton']:.4f}°C")
             with col3:
-                st.metric("Spline", f"{resultado['todos_metodos']['spline']:.4f}°C")
+                st.metric("Trazadores cúbicos", f"{resultado['todos_metodos']['Trazadores cúbicos']:.4f}°C")
+
+
+def mostrar_alertas_analisis(datos):
+    """Muestra alertas y recomendaciones del análisis térmico"""
+    st.markdown("---")
+    st.markdown("### ⚠️ Alertas de Estrés Térmico")
+
+    intervalos = datos['intervalos_criticos']
+    umbral_max = datos['umbral_max']
+    umbral_min = datos['umbral_min']
+
+    # Contador de alertas
+    total_alertas = len(intervalos['sobre_max']) + len(intervalos['bajo_min'])
+
+    if total_alertas == 0:
+        st.success("✅ **Estado Óptimo**: La temperatura se mantuvo dentro del rango seguro durante todo el período.")
+        st.info(f"📊 Rango seguro: {umbral_min}°C - {umbral_max}°C")
+        return
+
+    # Mostrar alertas de temperatura alta
+    if len(intervalos['sobre_max']) > 0:
+        st.error(f"🔥 **{len(intervalos['sobre_max'])} Períodos de Estrés por Calor Detectados**")
+
+        for i, intervalo in enumerate(intervalos['sobre_max'], 1):
+            with st.expander(
+                    f"🌡️ Alerta {i}: Temperatura excesiva ({intervalo['inicio']:.1f} - {intervalo['fin']:.1f} min)"):
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.metric("⏱️ Inicio", f"{intervalo['inicio']:.1f} min")
+
+                with col2:
+                    st.metric("⏱️ Fin", f"{intervalo['fin']:.1f} min")
+
+                with col3:
+                    duracion = intervalo['fin'] - intervalo['inicio']
+                    st.metric("⏳ Duración", f"{duracion:.1f} min")
+
+                st.metric(
+                    "🌡️ Temperatura Máxima Alcanzada",
+                    f"{intervalo['temp_max']:.2f}°C",
+                    delta=f"+{intervalo['temp_max'] - umbral_max:.2f}°C sobre el límite"
+                )
+
+                st.warning("**⚠️ Riesgo:** Estrés térmico por calor")
+                st.markdown("""
+                **📋 Recomendaciones:**
+                - 💧 Incrementar frecuencia de riego
+                - 🌿 Utilizar capa para mantener humedad
+                - ☀️ Considerar malla sombra si persiste
+                - 📊 Monitorear signos de marchitez
+                """)
+
+    # Mostrar alertas de temperatura baja
+    if len(intervalos['bajo_min']) > 0:
+        st.warning(f"❄️ **{len(intervalos['bajo_min'])} Períodos de Estrés por Frío Detectados**")
+
+        for i, intervalo in enumerate(intervalos['bajo_min'], 1):
+            with st.expander(
+                    f"🧊 Alerta {i}: Temperatura insuficiente ({intervalo['inicio']:.1f} - {intervalo['fin']:.1f} min)"):
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.metric("⏱️ Inicio", f"{intervalo['inicio']:.1f} min")
+
+                with col2:
+                    st.metric("⏱️ Fin", f"{intervalo['fin']:.1f} min")
+
+                with col3:
+                    duracion = intervalo['fin'] - intervalo['inicio']
+                    st.metric("⏳ Duración", f"{duracion:.1f} min")
+
+                st.metric(
+                    "🌡️ Temperatura Mínima Alcanzada",
+                    f"{intervalo['temp_min']:.2f}°C",
+                    delta=f"-{umbral_min - intervalo['temp_min']:.2f}°C bajo el límite"
+                )
+
+                st.info("**⚠️ Riesgo:** Estrés térmico por frío")
+                st.markdown("""
+                **📋 Recomendaciones:**
+                - 🔥 Considerar sistemas de calefacción
+                - 🌾 Proteger con cobertura vegetal
+                - 💨 Reducir exposición al viento
+                - 📊 Monitorear desarrollo de planta
+                """)
+
+    # Resumen general
+    st.markdown("---")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("🔴 Total de Alertas", total_alertas)
+
+    with col2:
+        st.metric("🔥 Por Calor", len(intervalos['sobre_max']))
+
+    with col3:
+        st.metric("❄️ Por Frío", len(intervalos['bajo_min']))
 
 # ============================================
 # FUNCIÓN PARA RENDERIZAR TABLA DE DATOS
@@ -984,7 +1168,7 @@ def main():
 
         with subcol3:
             if st.button("🌡️ Analizar", key="btn_analizar", type="primary", use_container_width=True):
-                analizar({"umbral": 29.0})
+                analizar({"umbral_max": 29.0, "umbral_min": 21.0})
 
         with subcol4:
             if st.button("🪄 Predicción", key="btn_prediccion", type="primary", use_container_width=True):

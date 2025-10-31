@@ -1,5 +1,5 @@
 """
-Trazadores Cúbicos (Cubic Splines)
+Trazadores Cúbicos (Cubic trazadores_cubicoss)
 Interpolación suave usando polinomios cúbicos por segmentos
 """
 
@@ -126,9 +126,9 @@ def trazadores_cubicos_sujetos(xi, yi, dy0, dyn):
     return coeficientes
 
 
-def evaluar_spline(xi, coeficientes, x):
+def evaluar_trazadores_cubicos(xi, coeficientes, x):
     """
-    Evalúa el spline en el punto(s) x
+    Evalúa el trazadores_cubicos en el punto(s) x
 
     Parámetros:
     -----------
@@ -164,9 +164,9 @@ def evaluar_spline(xi, coeficientes, x):
     return resultado[0] if scalar_input else resultado
 
 
-def derivada_spline(xi, coeficientes, x):
+def derivada_trazadores_cubicos(xi, coeficientes, x):
     """
-    Calcula la derivada del spline en x
+    Calcula la derivada del trazadores_cubicos en x
     S'(x) = b + 2c(x-xi) + 3d(x-xi)^2
     """
     xi = np.array(xi)
@@ -192,9 +192,9 @@ def derivada_spline(xi, coeficientes, x):
     return resultado[0] if scalar_input else resultado
 
 
-def segunda_derivada_spline(xi, coeficientes, x):
+def segunda_derivada_trazadores_cubicos(xi, coeficientes, x):
     """
-    Calcula la segunda derivada del spline en x
+    Calcula la segunda derivada del trazadores_cubicos en x
     S''(x) = 2c + 6d(x-xi)
     """
     xi = np.array(xi)
@@ -220,9 +220,9 @@ def segunda_derivada_spline(xi, coeficientes, x):
     return resultado[0] if scalar_input else resultado
 
 
-def mostrar_coeficientes_spline(xi, coeficientes):
+def mostrar_coeficientes_trazadores_cubicos(xi, coeficientes):
     """
-    Muestra los coeficientes de cada segmento del spline
+    Muestra los coeficientes de cada segmento del trazadores_cubicos
     """
     print("\nCoeficientes de los Trazadores Cúbicos:")
     print("=" * 80)
@@ -262,26 +262,26 @@ def ejemplo_trazadores_naturales():
     for x, y in zip(xi, yi):
         print(f"  ({x}, {y})")
 
-    # Calcular spline
+    # Calcular trazadores_cubicos
     coef = trazadores_cubicos_naturales(xi, yi)
-    mostrar_coeficientes_spline(xi, coef)
+    mostrar_coeficientes_trazadores_cubicos(xi, coef)
 
     # Evaluar en puntos
     x_test = np.array([0.5, 1.5, 2.5, 3.5])
     print("\nEvaluación en puntos intermedios:")
     for x in x_test:
-        y = evaluar_spline(xi, coef, x)
-        dy = derivada_spline(xi, coef, x)
-        ddy = segunda_derivada_spline(xi, coef, x)
+        y = evaluar_trazadores_cubicos(xi, coef, x)
+        dy = derivada_trazadores_cubicos(xi, coef, x)
+        ddy = segunda_derivada_trazadores_cubicos(xi, coef, x)
         print(f"  x={x:.1f}: S(x)={y:.6f}, S'(x)={dy:.6f}, S''(x)={ddy:.6f}")
 
     # Verificar condiciones naturales
     print(f"\nVerificación de condiciones naturales:")
-    print(f"  S''({xi[0]}) = {segunda_derivada_spline(xi, coef, xi[0]):.6f} (debe ser ≈0)")
-    print(f"  S''({xi[-1]}) = {segunda_derivada_spline(xi, coef, xi[-1]):.6f} (debe ser ≈0)")
+    print(f"  S''({xi[0]}) = {segunda_derivada_trazadores_cubicos(xi, coef, xi[0]):.6f} (debe ser ≈0)")
+    print(f"  S''({xi[-1]}) = {segunda_derivada_trazadores_cubicos(xi, coef, xi[-1]):.6f} (debe ser ≈0)")
 
     # Graficar
-    graficar_spline(xi, yi, coef, titulo="Trazadores Cúbicos Naturales")
+    graficar_trazadores_cubicos(xi, yi, coef, titulo="Trazadores Cúbicos Naturales")
 
 
 def ejemplo_trazadores_sujetos():
@@ -305,28 +305,28 @@ def ejemplo_trazadores_sujetos():
     print(f"  S'({xi[0]}) = {dy0}")
     print(f"  S'({xi[-1]}) = {dyn}")
 
-    # Calcular spline
+    # Calcular trazadores_cubicos
     coef = trazadores_cubicos_sujetos(xi, yi, dy0, dyn)
-    mostrar_coeficientes_spline(xi, coef)
+    mostrar_coeficientes_trazadores_cubicos(xi, coef)
 
     # Verificar condiciones
     print(f"\nVerificación:")
-    print(f"  S'({xi[0]}) = {derivada_spline(xi, coef, xi[0]):.6f} (debe ser {dy0})")
-    print(f"  S'({xi[-1]}) = {derivada_spline(xi, coef, xi[-1]):.6f} (debe ser {dyn})")
+    print(f"  S'({xi[0]}) = {derivada_trazadores_cubicos(xi, coef, xi[0]):.6f} (debe ser {dy0})")
+    print(f"  S'({xi[-1]}) = {derivada_trazadores_cubicos(xi, coef, xi[-1]):.6f} (debe ser {dyn})")
 
     # Graficar
-    graficar_spline(xi, yi, coef, titulo="Trazadores Cúbicos Sujetos")
+    graficar_trazadores_cubicos(xi, yi, coef, titulo="Trazadores Cúbicos Sujetos")
 
 
-def graficar_spline(xi, yi, coeficientes, titulo="Trazadores Cúbicos"):
+def graficar_trazadores_cubicos(xi, yi, coeficientes, titulo="Trazadores Cúbicos"):
     """
-    Grafica el spline con sus derivadas
+    Grafica el trazadores_cubicos con sus derivadas
     """
     # Puntos para graficar
     x_plot = np.linspace(xi[0], xi[-1], 500)
-    y_plot = evaluar_spline(xi, coeficientes, x_plot)
-    dy_plot = derivada_spline(xi, coeficientes, x_plot)
-    ddy_plot = segunda_derivada_spline(xi, coeficientes, x_plot)
+    y_plot = evaluar_trazadores_cubicos(xi, coeficientes, x_plot)
+    dy_plot = derivada_trazadores_cubicos(xi, coeficientes, x_plot)
+    ddy_plot = segunda_derivada_trazadores_cubicos(xi, coeficientes, x_plot)
 
     # Crear figura con 3 subgráficas
     fig, axes = plt.subplots(3, 1, figsize=(10, 10))
@@ -363,10 +363,10 @@ def graficar_spline(xi, yi, coeficientes, titulo="Trazadores Cúbicos"):
 
 def comparar_con_polinomio():
     """
-    Compara spline vs polinomio de interpolación
+    Compara trazadores_cubicos vs polinomio de interpolación
     """
     print("\n\n" + "=" * 80)
-    print("COMPARACIÓN: SPLINE vs POLINOMIO DE LAGRANGE")
+    print("COMPARACIÓN: trazadores_cubicos vs POLINOMIO DE LAGRANGE")
     print("=" * 80 + "\n")
 
     from lagrange import lagrange_interpolation
@@ -379,38 +379,38 @@ def comparar_con_polinomio():
     print(f"Con {len(xi)} puntos en [-5, 5]\n")
 
     # Calcular ambos
-    coef_spline = trazadores_cubicos_naturales(xi, yi)
+    coef_trazadores_cubicos = trazadores_cubicos_naturales(xi, yi)
 
     # Graficar comparación
     x_plot = np.linspace(-5, 5, 500)
     y_real = 1 / (1 + x_plot ** 2)
-    y_spline = evaluar_spline(xi, coef_spline, x_plot)
+    y_trazadores_cubicos = evaluar_trazadores_cubicos(xi, coef_trazadores_cubicos, x_plot)
     y_lagrange = lagrange_interpolation(xi, yi, x_plot)
 
     plt.figure(figsize=(12, 6))
     plt.plot(x_plot, y_real, 'k-', linewidth=2, label='Función real', alpha=0.7)
-    plt.plot(x_plot, y_spline, 'b-', linewidth=2, label='Spline cúbico')
+    plt.plot(x_plot, y_trazadores_cubicos, 'b-', linewidth=2, label='trazadores_cubicos cúbico')
     plt.plot(x_plot, y_lagrange, 'r--', linewidth=2, label='Lagrange')
     plt.plot(xi, yi, 'go', markersize=8, label='Puntos dados')
     plt.grid(True, alpha=0.3)
     plt.xlabel('x', fontsize=12)
     plt.ylabel('y', fontsize=12)
-    plt.title('Spline vs Lagrange: Función de Runge', fontsize=14, fontweight='bold')
+    plt.title('trazadores_cubicos vs Lagrange: Función de Runge', fontsize=14, fontweight='bold')
     plt.legend()
     plt.ylim(-0.5, 1.5)
     plt.tight_layout()
-    plt.savefig('comparacion_spline_lagrange.png', dpi=300)
-    print("✅ Gráfica guardada como 'comparacion_spline_lagrange.png'")
+    plt.savefig('comparacion_trazadores_cubicos_lagrange.png', dpi=300)
+    print("✅ Gráfica guardada como 'comparacion_trazadores_cubicos_lagrange.png'")
     plt.show()
 
     # Calcular errores
-    error_spline = np.mean(np.abs(y_spline - y_real))
+    error_trazadores_cubicos = np.mean(np.abs(y_trazadores_cubicos - y_real))
     error_lagrange = np.mean(np.abs(y_lagrange - y_real))
 
     print(f"\nError promedio:")
-    print(f"  Spline:   {error_spline:.6f}")
+    print(f"  trazadores_cubicos:   {error_trazadores_cubicos:.6f}")
     print(f"  Lagrange: {error_lagrange:.6f}")
-    print(f"\n🏆 Spline es {error_lagrange / error_spline:.2f}x mejor!")
+    print(f"\n🏆 trazadores_cubicos es {error_lagrange / error_trazadores_cubicos:.2f}x mejor!")
 
 
 if __name__ == "__main__":
