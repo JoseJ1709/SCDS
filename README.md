@@ -5,7 +5,7 @@ Monitor térmico para análisis de temperatura en cultivos de palma africana.
 ## Instalación
 
 ```bash
-pip install -r requirimientos.txt
+pip install -r requirements.txt
 ```
 
 ## Uso
