@@ -826,6 +826,42 @@ def renderizar_visualizacion():
             temp_avg = np.mean(datos.get('temp', datos.get('original', [0])))
             st.metric("📊 Promedio", f"{temp_avg:.2f}°C")
 
+    if tipo == 'comparacion':
+        st.markdown("---")
+        st.markdown("### 💾 Descargar Datos Interpolados")
+
+        # Crear DataFrame con los datos interpolados del mejor método
+        df_interpolado = pd.DataFrame({
+            'Tiempo (min)': datos['tiempo_interp'],
+            'Temperatura (°C)': datos['interpolado']
+        })
+
+        # Convertir a CSV
+        csv_interpolado = df_interpolado.to_csv(index=False)
+
+        # Información y botón de descarga
+        col_info, col_btn = st.columns([3, 1])
+
+        with col_info:
+            st.info(f"""
+                   📊 **Datos disponibles:** {len(df_interpolado)} puntos interpolados  
+                   🎯 **Método utilizado:** {datos['mejor_metodo'].upper()}  
+                   📈 **Rango:** {df_interpolado['Tiempo (min)'].min():.1f} - {df_interpolado['Tiempo (min)'].max():.1f} min
+               """)
+
+        with col_btn:
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.download_button(
+                label="📥 Descargar CSV",
+                data=csv_interpolado,
+                file_name=f"datos_interpolados_{datos['mejor_metodo']}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="btn_download_interpolado"
+            )
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 
@@ -1195,18 +1231,30 @@ def main():
                 help="Sube un archivo CSV con columnas: 'Tiempo (min)' y 'Temperatura (°C)'"
             )
 
-            # Inicializar flag
+            # Inicializar flags
             if 'archivo_procesado' not in st.session_state:
                 st.session_state.archivo_procesado = None
 
-            # Procesar solo si es archivo NUEVO
-            if uploaded is not None and uploaded.name != st.session_state.archivo_procesado:
+            # ========== CAMBIO AQUÍ: Usar file_id único ==========
+            if 'ultimo_file_id' not in st.session_state:
+                st.session_state.ultimo_file_id = None
+
+            # Generar ID único del archivo basado en nombre + tamaño + contenido (primeros bytes)
+            file_id_actual = None
+            if uploaded is not None:
+                # Crear ID único: nombre + tamaño + hash de primeros 100 bytes
+                file_bytes = uploaded.getvalue()
+                file_id_actual = f"{uploaded.name}_{uploaded.size}_{hash(file_bytes[:100])}"
+
+            # Procesar solo si es un archivo DIFERENTE (nuevo ID)
+            if uploaded is not None and file_id_actual != st.session_state.ultimo_file_id:
                 try:
                     df = pd.read_csv(uploaded)
 
                     if 'Tiempo (min)' in df.columns and 'Temperatura (°C)' in df.columns:
                         st.session_state.datos_originales = df
                         st.session_state.archivo_procesado = uploaded.name
+                        st.session_state.ultimo_file_id = file_id_actual  # Guardar nuevo ID
 
                         st.success(f"✅ Cargado: {len(df)} registros de **{uploaded.name}**")
 
