@@ -62,6 +62,11 @@ if 'punto_reconstruccion' not in st.session_state:
 if 'resultado_reconstruccion' not in st.session_state:
     st.session_state.resultado_reconstruccion = None
 
+if 'punto_prediccion' not in st.session_state:
+    st.session_state.punto_prediccion = None
+
+if 'resultado_prediccion' not in st.session_state:
+    st.session_state.resultado_prediccion = None
 
 # ============================================
 # FUNCIONES DE INTERPOLACIÓN
@@ -309,6 +314,60 @@ def generar_reconstruccion_punto():
             st.error(f"❌ Error en la reconstrucción del punto: {str(e)}")
 
 
+def generar_prediccion_punto():
+    """Genera la predicción para un punto específico futuro"""
+    if st.session_state.punto_prediccion is not None:
+        try:
+            df = st.session_state.datos_originales
+            h = df['Tiempo (min)'].values.tolist()
+            t = df['Temperatura (°C)'].values.tolist()
+
+            punto = st.session_state.punto_prediccion
+
+            # Validar que el punto esté en el futuro
+            if punto <= h[-1]:
+                st.warning(f"⚠️ El punto {punto} min está en el rango histórico. Usa 'Reconstrucción' en su lugar.")
+                return
+
+            # Usar últimos N puntos para extrapolación
+            n_puntos = min(5, len(h))
+            h_base = h[-n_puntos:]
+            t_base = t[-n_puntos:]
+
+            # Aplicar interpolación/extrapolación
+            t_lagrange = lagrange.lagrange_interpolation(h_base, t_base, [punto])
+            t_newton = newton_interpolation(h_base, t_base, [punto])
+
+            coef = trazadores_cubicos_naturales(h_base, t_base)
+            t_spline = evaluar_spline(h_base, coef, [punto])
+
+            # Obtener el mejor método del análisis actual
+            mejor_metodo = st.session_state.datos_procesados.get('mejor_metodo', 'spline')
+
+            # Seleccionar el resultado del mejor método
+            if mejor_metodo == 'lagrange':
+                resultado = t_lagrange[0]
+            elif mejor_metodo == 'newton':
+                resultado = t_newton[0]
+            else:  # 'spline'
+                resultado = t_spline[0]
+
+            st.session_state.resultado_prediccion = {
+                'punto': punto,
+                'temperatura': resultado,
+                'metodo': mejor_metodo,
+                'todos_metodos': {
+                    'lagrange': t_lagrange[0],
+                    'newton': t_newton[0],
+                    'spline': t_spline[0]
+                }
+            }
+
+            st.success(f"✅ Predicción generada para t = {punto} min")
+
+        except Exception as e:
+            st.error(f"❌ Error en la predicción del punto: {str(e)}")
+
 def analizar(datos):
     """Analiza temperatura y estrés térmico"""
     st.success(f"✅ Analizando temperatura: {datos}")
@@ -332,33 +391,78 @@ def analizar(datos):
 
 
 def prediccion(datos):
-    """Predice temperatura futura"""
-    st.success(f"✅ Generando predicción: {datos}")
+    """Predice temperatura futura usando extrapolación por interpolación"""
+    st.success(f"✅ Generando predicción con extrapolación")
 
     # Usar datos de la tabla
     df = st.session_state.datos_originales
-    h_historico = df['Tiempo (min)'].values
-    t_historico = df['Temperatura (°C)'].values
+    h_historico = df['Tiempo (min)'].values.tolist()
+    t_historico = df['Temperatura (°C)'].values.tolist()
 
-    # Simular predicción simple (promedio móvil)
-    ultimo_tiempo = h_historico[-1]
-    h_futuro = np.array([ultimo_tiempo + 5, ultimo_tiempo + 10,
-                         ultimo_tiempo + 15, ultimo_tiempo + 20])
-    t_futuro = np.array([t_historico[-1] - 1, t_historico[-1] - 2,
-                         t_historico[-1] - 3, t_historico[-1] - 3.5])
+    # Tomar los últimos N puntos para extrapolación (más precisión)
+    n_puntos = min(5, len(h_historico))  # Usar últimos 5 puntos o todos si hay menos
+    h_base = h_historico[-n_puntos:]
+    t_base = t_historico[-n_puntos:]
 
-    st.session_state.accion_actual = 'prediccion'
-    st.session_state.datos_procesados = {
-        'tiempo_hist': h_historico,
-        'temp_hist': t_historico,
-        'tiempo_fut': h_futuro,
-        'temp_fut': t_futuro,
-        'titulo': '🪄 Predicción de Temperatura',
-        'tipo': 'prediccion'
-    }
+    try:
+        # Generar puntos futuros para predicción
+        ultimo_tiempo = h_historico[-1]
+        horizonte = datos.get('horizonte', 30)  # minutos a predecir
 
-    return {"status": "success", "accion": "prediccion"}
+        # Crear puntos futuros (extrapolación)
+        num_puntos_futuros = 100
+        h_futuro = np.linspace(ultimo_tiempo, ultimo_tiempo + horizonte, num_puntos_futuros).tolist()
 
+        # Aplicar interpolación/extrapolación con los últimos puntos
+        # Usar spline cúbico para extrapolación suave
+        coef = trazadores_cubicos_naturales(h_base, t_base)
+        t_futuro = evaluar_spline(h_base, coef, h_futuro)
+
+        # Evaluar precisión del método
+        mejor_metodo = evaluar_precision(h_historico, t_historico)
+
+        st.success(f"🎯 **Método de predicción**: {mejor_metodo.upper()} (Extrapolación)")
+        st.info(f"📊 Predicción basada en los últimos {n_puntos} puntos | Horizonte: {horizonte} min")
+
+        st.session_state.accion_actual = 'prediccion'
+        st.session_state.datos_procesados = {
+            'tiempo_hist': h_historico,
+            'temp_hist': t_historico,
+            'tiempo_fut': h_futuro,
+            'temp_fut': t_futuro,
+            'mejor_metodo': mejor_metodo,
+            'horizonte': horizonte,
+            'titulo': '🪄 Predicción de Temperatura - Extrapolación',
+            'tipo': 'prediccion'
+        }
+
+        return {"status": "success", "accion": "prediccion", "mejor_metodo": mejor_metodo}
+
+    except Exception as e:
+        st.error(f"❌ Error en la predicción: {str(e)}")
+        # Fallback: extrapolación lineal simple
+        ultimo_tiempo = h_historico[-1]
+        horizonte = datos.get('horizonte', 30)
+
+        # Calcular tendencia lineal de los últimos puntos
+        pendiente = (t_historico[-1] - t_historico[-2]) / (h_historico[-1] - h_historico[-2])
+
+        h_futuro = np.linspace(ultimo_tiempo, ultimo_tiempo + horizonte, 50)
+        t_futuro = t_historico[-1] + pendiente * (h_futuro - ultimo_tiempo)
+
+        st.session_state.accion_actual = 'prediccion'
+        st.session_state.datos_procesados = {
+            'tiempo_hist': h_historico,
+            'temp_hist': t_historico,
+            'tiempo_fut': h_futuro.tolist(),
+            'temp_fut': t_futuro.tolist(),
+            'mejor_metodo': 'lineal (fallback)',
+            'horizonte': horizonte,
+            'titulo': '🪄 Predicción de Temperatura - Lineal',
+            'tipo': 'prediccion'
+        }
+
+        return {"status": "warning", "accion": "prediccion"}
 
 def exportar_datos(datos):
     """Exporta datos"""
@@ -514,23 +618,83 @@ def renderizar_visualizacion():
             annotation_text=f"Umbral: {datos['umbral']}°C"
         )
 
+
     elif tipo == 'prediccion':
+
+        # Datos históricos
+
         fig.add_trace(go.Scatter(
+
             x=datos['tiempo_hist'],
+
             y=datos['temp_hist'],
+
             mode='lines+markers',
+
             name='Histórico',
+
             line=dict(color='#3498db', width=2),
+
             marker=dict(size=8)
+
         ))
+
+        # Predicción (extrapolación)
+
         fig.add_trace(go.Scatter(
+
             x=datos['tiempo_fut'],
+
             y=datos['temp_fut'],
-            mode='lines+markers',
-            name='Predicción',
+
+            mode='lines',
+
+            name=f'Predicción ({datos.get("mejor_metodo", "spline").upper()})',
+
             line=dict(color='#9b59b6', width=2, dash='dash'),
-            marker=dict(size=8)
+
         ))
+
+        # Mostrar punto de predicción específico si existe
+
+        if st.session_state.resultado_prediccion is not None:
+            punto = st.session_state.resultado_prediccion['punto']
+
+            temperatura = st.session_state.resultado_prediccion['temperatura']
+
+            metodo = st.session_state.resultado_prediccion['metodo']
+
+            fig.add_trace(go.Scatter(
+
+                x=[punto],
+
+                y=[temperatura],
+
+                mode='markers',
+
+                name=f'Punto Predicho ({metodo.upper()})',
+
+                marker=dict(size=15, color='#e67e22', symbol='star'),
+
+                hovertemplate=f'<b>Tiempo:</b> {punto} min<br><b>Temperatura:</b> {temperatura:.2f}°C<br><b>Método:</b> {metodo.upper()}<extra></extra>'
+
+            ))
+
+        # Línea divisoria entre histórico y predicción
+
+        fig.add_vline(
+
+            x=datos['tiempo_hist'][-1],
+
+            line_dash="dot",
+
+            line_color="gray",
+
+            annotation_text="Punto actual",
+
+            annotation_position="top"
+
+        )
 
     fig.update_layout(
         xaxis_title="Tiempo (minutos)",
@@ -553,6 +717,14 @@ def renderizar_visualizacion():
     # Mostrar información adicional para reconstrucción
     if tipo == 'reconstruccion':
         mostrar_panel_reconstruccion()
+
+    # Mostrar información adicional para reconstrucción
+    if tipo == 'reconstruccion':
+        mostrar_panel_reconstruccion()
+
+    # Mostrar información adicional para predicción
+    if tipo == 'prediccion':
+        mostrar_panel_prediccion()
 
     col1, col2, col3 = st.columns(3)
 
@@ -636,6 +808,70 @@ def mostrar_panel_reconstruccion():
             with col3:
                 st.metric("Spline", f"{resultado['todos_metodos']['spline']:.4f}°C")
 
+
+def mostrar_panel_prediccion():
+    """Muestra el panel para predicción de puntos específicos futuros"""
+    st.markdown("---")
+    st.markdown("### 🔮 Predicción de Punto Futuro Específico")
+
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        # Input para el punto a predecir
+        tiempo_max_hist = st.session_state.datos_originales['Tiempo (min)'].max()
+        tiempo_max_pred = tiempo_max_hist + 60  # Permitir predecir hasta 60 min en el futuro
+
+        punto = st.number_input(
+            f"Ingrese el tiempo futuro (min) para predecir (> {tiempo_max_hist:.1f} min):",
+            min_value=float(tiempo_max_hist + 1),
+            max_value=float(tiempo_max_pred),
+            value=float(tiempo_max_hist + 10),
+            step=1.0,
+            format="%.1f",
+            key="input_punto_prediccion"
+        )
+
+        st.session_state.punto_prediccion = punto
+
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🔮 Generar Predicción", use_container_width=True):
+            generar_prediccion_punto()
+
+    # Mostrar resultados si existen
+    if st.session_state.resultado_prediccion is not None:
+        resultado = st.session_state.resultado_prediccion
+        st.success(f"**Resultado de la predicción:**")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric(
+                "⏱️ Tiempo Futuro",
+                f"{resultado['punto']} min"
+            )
+
+        with col2:
+            st.metric(
+                "🌡️ Temperatura Predicha",
+                f"{resultado['temperatura']:.2f}°C"
+            )
+
+        with col3:
+            st.metric(
+                "⚙️ Método",
+                resultado['metodo'].upper()
+            )
+
+        # Mostrar comparación de todos los métodos
+        with st.expander("📊 Comparación de Métodos de Predicción"):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Lagrange", f"{resultado['todos_metodos']['lagrange']:.4f}°C")
+            with col2:
+                st.metric("Newton", f"{resultado['todos_metodos']['newton']:.4f}°C")
+            with col3:
+                st.metric("Spline", f"{resultado['todos_metodos']['spline']:.4f}°C")
 
 # ============================================
 # FUNCIÓN PARA RENDERIZAR TABLA DE DATOS
@@ -753,6 +989,8 @@ def main():
         with subcol4:
             if st.button("🪄 Predicción", key="btn_prediccion", type="primary", use_container_width=True):
                 prediccion({"horizonte": 30})
+                # Limpiar resultado anterior al generar nueva predicción
+                st.session_state.resultado_prediccion = None
 
     with col_botones_rojos:
         st.markdown("<h4 style='text-align: center;'> ⚠️ Acciones </h4>", unsafe_allow_html=True)
